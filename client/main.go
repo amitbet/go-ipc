@@ -13,12 +13,15 @@ func main() {
 	var pipeClient *pipes.NamedPipe
 	//for i := 0; i < 3; i++ {
 	fmt.Println("Opening ipc as client")
-	pipeClient = pipes.NewNamedPipe(pipePath)
+	// set the correct pipe path: (constructor function will concat it with stuff)
+	pipeClient = &pipes.NamedPipe{PipePath:pipePath}
+
 	err := pipeClient.Connect()
 	if err != nil {
-		fmt.Println("Error: ", err)
+		fmt.Println("Client Main, Error: ", err)
 	}
 	// time.Sleep(500 * time.Millisecond)
 	//}
+	fmt.Println("client: writing!")
 	pipeClient.WriteMessage("hello\n")
 }

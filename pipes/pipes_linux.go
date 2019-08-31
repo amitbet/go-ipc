@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
+	"path"
 	"syscall"
 )
 
@@ -15,7 +17,10 @@ type NamedPipe struct {
 	writingEnd *os.File
 }
 
-func NewNamedPipe(pipePath string) *NamedPipe {
+func NewNamedPipe(pipeName string) *NamedPipe {
+
+	tmpDir, _ := ioutil.TempDir("", "named-pipes")
+	pipePath := path.Join(tmpDir, pipeName)
 
 	np := &NamedPipe{
 		PipePath: pipePath,
