@@ -11,7 +11,7 @@ import (
 
 type NamedPipe struct {
 	PipeName string
-	Conn     net.Conn
+	conn     net.Conn
 	Incoming chan string
 }
 
@@ -44,14 +44,14 @@ func (np *NamedPipe) ListenAndServe() {
 			fmt.Printf("Error: %v", err)
 			continue
 		}
-		np.Conn = conn
+		np.conn = conn
 		go np.handleConnection(conn)
 	}
 }
 
 func (np *NamedPipe) Connect() {
 	conn, err := npipe.Dial(`\\.\pipe\` + np.PipeName)
-	np.Conn = conn
+	np.conn = conn
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
@@ -61,16 +61,14 @@ func (np *NamedPipe) WriteMessage(message string) {
 	// w := bufio.NewWriter(np.Conn)
 	// w.WriteString(message)
 	strings.Trim(message, "\n")
-	_, err := fmt.Fprintf(np.Conn, message+"\n")
+	_, err := fmt.Fprintf(np.conn, message+"\n")
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
 }
 
 func (np *NamedPipe) ReadMessage() string {
-	//reader := bufio.NewReader(np.Conn)
-
-	msg, err := bufio.NewReader(np.Conn).ReadString('\n')
+	msg, err := bufio.NewReader(np.conn).ReadString('\n')
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
