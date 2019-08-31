@@ -1,32 +1,24 @@
 package pipes
 
 import (
-	"bufio"
+	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
-	"path"
 	"syscall"
 )
 
 type NamedPipe struct {
-	PipeName   string
-	p1Path     string
-	p2Path     string
+	PipePath   string
 	Incoming   chan string
 	readingEnd *os.File
 	writingEnd *os.File
 }
 
-func NewNamedPipe(pipename string) *NamedPipe {
-	tmpDir, _ := ioutil.TempDir("", "named-pipes")
-	p1path := path.Join(tmpDir, pipename+"-P1")
-	p2path := path.Join(tmpDir, pipename+"-P2")
+func NewNamedPipe(pipePath string) *NamedPipe {
 
 	np := &NamedPipe{
-		PipeName: pipename,
-		p1Path:   p1path,
-		p2Path:   p2path,
+		PipePath: pipePath,
 	}
 	return np
 }
@@ -44,63 +36,87 @@ func NewNamedPipe(pipename string) *NamedPipe {
 // }
 
 func (np *NamedPipe) handleConnection() {
+	//	var err error
+
 	for {
 		str := np.ReadMessage()
-		fmt.Println("got message: ", str)
+		fmt.Println("handleConnection, got message: ", str)
 		np.Incoming <- str
 	}
 }
 
-func (np *NamedPipe) ListenAndServe() {
+// func (np *NamedPipe) waitForOtherSide() {
+// 	var err error
+// 	for i := 0; i < 500; i++ {
+// 		fmt.Println("server: open write end")
+// 		np.writingEnd, err = os.OpenFile(np.p2Path, os.O_WRONLY, 0600)
+// 		if err != nil {
+// 			fmt.Printf("Warn: %v\n", err)
+// 		}
+// 	}
+// }
+
+func (np *NamedPipe) ListenAndServe() error {
 	var err error
 
 	fmt.Println("Running IPC server")
 	// Create named pipe
-	syscall.Mkfifo(np.p1Path, 0600)
-	syscall.Mkfifo(np.p2Path, 0600)
-	np.readingEnd, err = os.OpenFile(np.p1Path, os.O_RDONLY, 0600)
+	syscall.Mkfifo(np.PipePath+"1", 0600)
+	syscall.Mkfifo(np.PipePath+"2", 0600)
+	fmt.Println("server: open read end")
+	np.readingEnd, err = os.OpenFile(np.PipePath+"1", os.O_RDONLY, 0600)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
-	}
-	np.writingEnd, err = os.OpenFile(np.p2Path, os.O_WRONLY, 0600)
-	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("ListenAndServe, Error: %v\n", err)
 	}
 	go np.handleConnection()
+	fmt.Println("server: open write end")
+	np.writingEnd, err = os.OpenFile(np.PipePath+"2", os.O_WRONLY, 0600)
+	if err != nil {
+		fmt.Printf("Warn: %v\n", err)
+	}
+	// var buff bytes.Buffer
+	// fmt.Println("Parent Waiting for initial connection & hello message")
+	// io.Copy(&buff, np.readingEnd)
+
+	// if string(buff.Bytes()) != "hello" {
+	// 	fmt.Printf("Error: %v\n", err)
+	// 	return errors.New("initiation sequence error: invalid handshake")
+	// }
+
+	return nil
 }
 
-func (np *NamedPipe) Connect() {
+func (np *NamedPipe) Connect() error {
 	var err error
-	fmt.Println("Opening named pipe for reading")
-	np.readingEnd, err = os.OpenFile(np.p2Path, os.O_RDONLY, 0600)
+	//syscall.Mkfifo(np.p2Path, 0600)
+	fmt.Println("client: open write end")
+	np.writingEnd, err = os.OpenFile(np.PipePath+"1", os.O_WRONLY, 0600)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Warn: %v\n", err)
 	}
 
-	np.writingEnd, err = os.OpenFile(np.p1Path, os.O_WRONLY, 0600)
+	fmt.Println("client: open read end")
+	np.readingEnd, err = os.OpenFile(np.PipePath+"2", os.O_RDONLY, 0600)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Connect, Error: %v\n", err)
+		return err
 	}
+
 	go np.handleConnection()
+	return nil
 }
 
 func (np *NamedPipe) WriteMessage(message string) {
-	w := bufio.NewWriter(np.readingEnd)
-	w.WriteString(message)
-
-	// strings.Trim(message, "\n")
-	// _, err := fmt.Fprintf(np.conn, message+"\n")
-	// if err != nil {
-	// 	fmt.Printf("Error: %v", err)
-	// }
+	np.writingEnd.Write([]byte(message))
 }
 
 func (np *NamedPipe) ReadMessage() string {
-	// reader := bufio.NewReader(np.readingEnd)
+	var buff bytes.Buffer
 
-	msg, err := bufio.NewReader(np.readingEnd).ReadString('\n')
+	_, err := io.Copy(&buff, np.readingEnd)
+	//msg, err := bufio.NewReader(np.readingEnd).ReadString('\n')
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("ReadMessage, Error: %v\n", err)
 	}
-	return msg
+	return string(buff.Bytes())
 }

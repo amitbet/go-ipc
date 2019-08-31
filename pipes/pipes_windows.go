@@ -35,29 +35,33 @@ func (np *NamedPipe) handleConnection(conn net.Conn) {
 	}
 }
 
-func (np *NamedPipe) ListenAndServe() {
+func (np *NamedPipe) ListenAndServe()error {
 	ln, err := npipe.Listen(`\\.\pipe\` + np.PipeName)
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
+		return err
 	}
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			fmt.Printf("Error: %v", err)
+			fmt.Printf("Error: %v\n", err)
 			continue
 		}
 		np.conn = conn
 		go np.handleConnection(conn)
+		return nil
 	}
 }
 
-func (np *NamedPipe) Connect() {
+func (np *NamedPipe) Connect() error {
 	conn, err := npipe.Dial(`\\.\pipe\` + np.PipeName)
 	np.conn = conn
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
+		return err
 	}
 	go np.handleConnection()
+	return nil
 }
 
 func (np *NamedPipe) WriteMessage(message string) {
@@ -66,14 +70,14 @@ func (np *NamedPipe) WriteMessage(message string) {
 	strings.Trim(message, "\n")
 	_, err := fmt.Fprintf(np.conn, message+"\n")
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 	}
 }
 
 func (np *NamedPipe) ReadMessage() string {
 	msg, err := bufio.NewReader(np.conn).ReadString('\n')
 	if err != nil {
-		fmt.Printf("Error: %v", err)
+		fmt.Printf("Error: %v\n", err)
 	}
 	return msg
 }
