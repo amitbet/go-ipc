@@ -1,0 +1,6 @@
+debug
+tomcierge.exe
+*.exe
+*~
+*go1
+*_bin*
