@@ -28,9 +28,11 @@ func NewNamedPipe(pipename string) *NamedPipe {
 }
 
 func (np *NamedPipe) handleConnection(conn net.Conn) {
-	str := np.ReadMessage()
-	fmt.Println("got message: ", str)
-	np.Incoming <- str
+	for {
+		str := np.ReadMessage()
+		fmt.Println("got message: ", str)
+		np.Incoming <- str
+	}
 }
 
 func (np *NamedPipe) ListenAndServe() {
@@ -55,6 +57,7 @@ func (np *NamedPipe) Connect() {
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
+	go np.handleConnection()
 }
 
 func (np *NamedPipe) WriteMessage(message string) {

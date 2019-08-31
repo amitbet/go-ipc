@@ -1,5 +1,6 @@
 debug
 *.exe
+ipc
 *~
 *go1
 *_bin*

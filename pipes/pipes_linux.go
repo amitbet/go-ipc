@@ -4,61 +4,61 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"path"
-	"strings"
 	"syscall"
-
-	"gopkg.in/natefinch/npipe.v2"
 )
 
 type NamedPipe struct {
-	PipeName string
-	p1Path string
-	p2Path string
-	Incoming chan string
+	PipeName   string
+	p1Path     string
+	p2Path     string
+	Incoming   chan string
 	readingEnd *os.File
 	writingEnd *os.File
 }
 
-func NewNamedPipe(pipename string) NamedPipe {
-	tmpDir, _ := ioutil.TempDir("", "named-pipes")
-	p1path := path.Join(tmpDir, np.PipeName+"-P1")
-	p2path := path.Join(tmpDir, np.PipeName+"-P2")
-
-	np := &NamedPipe{
-		PipeName: pipename,
-		p1Path:p1path,
-		p2Path:p2path,
-	}
-
-}
-
 func NewNamedPipe(pipename string) *NamedPipe {
+	tmpDir, _ := ioutil.TempDir("", "named-pipes")
+	p1path := path.Join(tmpDir, pipename+"-P1")
+	p2path := path.Join(tmpDir, pipename+"-P2")
+
 	np := &NamedPipe{
 		PipeName: pipename,
+		p1Path:   p1path,
+		p2Path:   p2path,
 	}
-	// conn, err := npipe.Dial(`\\.\pipe\` + np.PipeName)
-	// if err != nil {
-	// 	fmt.Fprintf(conn, "Error: %v", err)
-	// }
-
 	return np
 }
 
-func (np *NamedPipe) handleConnection(conn net.Conn) {
-	str := np.ReadMessage()
-	fmt.Println("got message: ", str)
-	np.Incoming <- str
+// func NewNamedPipe(pipename string) *NamedPipe {
+// 	np := &NamedPipe{
+// 		PipeName: pipename,
+// 	}
+// 	// conn, err := npipe.Dial(`\\.\pipe\` + np.PipeName)
+// 	// if err != nil {
+// 	// 	fmt.Fprintf(conn, "Error: %v", err)
+// 	// }
+
+// 	return np
+// }
+
+func (np *NamedPipe) handleConnection() {
+	for {
+		str := np.ReadMessage()
+		fmt.Println("got message: ", str)
+		np.Incoming <- str
+	}
 }
 
 func (np *NamedPipe) ListenAndServe() {
+	var err error
+
 	fmt.Println("Running IPC server")
 	// Create named pipe
 	syscall.Mkfifo(np.p1Path, 0600)
 	syscall.Mkfifo(np.p2Path, 0600)
-	np.readingEnd, err := os.OpenFile(np.p1Path, os.O_RDONLY, 0600)
+	np.readingEnd, err = os.OpenFile(np.p1Path, os.O_RDONLY, 0600)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
@@ -66,19 +66,22 @@ func (np *NamedPipe) ListenAndServe() {
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
+	go np.handleConnection()
 }
 
 func (np *NamedPipe) Connect() {
+	var err error
 	fmt.Println("Opening named pipe for reading")
-	np.readingEnd, err := os.OpenFile(np.p2Path, os.O_RDONLY, 0600)
+	np.readingEnd, err = os.OpenFile(np.p2Path, os.O_RDONLY, 0600)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
 
-	np.writingEnd, err := os.OpenFile(np.p1Path, os.O_WRONLY, 0600)
+	np.writingEnd, err = os.OpenFile(np.p1Path, os.O_WRONLY, 0600)
 	if err != nil {
 		fmt.Printf("Error: %v", err)
 	}
+	go np.handleConnection()
 }
 
 func (np *NamedPipe) WriteMessage(message string) {
