@@ -24,6 +24,7 @@ func NewNamedPipe(pipeName string) *NamedPipe {
 
 	np := &NamedPipe{
 		PipePath: pipePath,
+		Incoming:  make(chan string),
 	}
 	return np
 }
@@ -63,6 +64,7 @@ func (np *NamedPipe) handleConnection() {
 
 func (np *NamedPipe) ListenAndServe() error {
 	var err error
+	np.Incoming = make(chan string)
 
 	fmt.Println("Running IPC server")
 	// Create named pipe
@@ -93,6 +95,8 @@ func (np *NamedPipe) ListenAndServe() error {
 
 func (np *NamedPipe) Connect() error {
 	var err error
+	np.Incoming = make(chan string)
+	
 	//syscall.Mkfifo(np.p2Path, 0600)
 	fmt.Println("client: open write end")
 	np.writingEnd, err = os.OpenFile(np.PipePath+"1", os.O_WRONLY, 0600)
