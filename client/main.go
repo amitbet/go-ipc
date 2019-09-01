@@ -24,4 +24,9 @@ func main() {
 	//}
 	fmt.Println("client: writing!")
 	pipeClient.WriteMessage("hello\n")
+	pipeClient.WriteMessage("hello2\n")
+	fmt.Println("client: reading!")
+	data:=<-pipeClient.Incoming
+	fmt.Println("client got data: ",data)
+	 
 }

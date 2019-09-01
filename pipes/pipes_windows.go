@@ -20,6 +20,7 @@ func NewNamedPipe(pipeName string) *NamedPipe {
 
 	np := &NamedPipe{
 		PipePath: `\\.\pipe\` + pipeName,
+		Incoming:  make(chan string),
 	}
 
 	return np
@@ -28,12 +29,15 @@ func NewNamedPipe(pipeName string) *NamedPipe {
 func (np *NamedPipe) handleConnection() {
 	for {
 		str := np.ReadMessage()
-		fmt.Println("got message: ", str)
+		fmt.Println("handleConnection, got message: ", str)
 		np.Incoming <- str
+		//fmt.Println("-handleConnection, cont... ")
 	}
 }
 
 func (np *NamedPipe) ListenAndServe() error {
+	np.Incoming = make(chan string)
+
 	ln, err := npipe.Listen(np.PipePath)
 	if err != nil {
 		fmt.Printf("ListenAndServe, Error: %v\n", err)
@@ -52,6 +56,8 @@ func (np *NamedPipe) ListenAndServe() error {
 }
 
 func (np *NamedPipe) Connect() error {
+	np.Incoming = make(chan string)
+	
 	fmt.Println("-Connect:",np.PipePath)
 	conn, err := npipe.Dial(np.PipePath)
 	np.conn = conn
