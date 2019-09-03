@@ -3,7 +3,9 @@ package pipes
 import (
 	"fmt"
 	"net"
+
 	"gopkg.in/natefinch/npipe.v2"
+
 	// "bytes"
 	// "io"
 	"bufio"
@@ -13,14 +15,17 @@ type NamedPipe struct {
 	PipePath string
 	conn     net.Conn
 	Incoming chan string
-
+}
+func GetPipePath(pipeName string) string{
+	pipePath := `\\.\pipe\` + pipeName
+	return pipePath
 }
 
-func NewNamedPipe(pipeName string) *NamedPipe {
+func NewNamedPipe(pipePath string) *NamedPipe {
 
 	np := &NamedPipe{
-		PipePath: `\\.\pipe\` + pipeName,
-		Incoming:  make(chan string),
+		PipePath: pipePath,
+		Incoming: make(chan string),
 	}
 
 	return np
@@ -31,12 +36,10 @@ func (np *NamedPipe) handleConnection() {
 		str := np.ReadMessage()
 		fmt.Println("handleConnection, got message: ", str)
 		np.Incoming <- str
-		//fmt.Println("-handleConnection, cont... ")
 	}
 }
 
 func (np *NamedPipe) ListenAndServe() error {
-	np.Incoming = make(chan string)
 
 	ln, err := npipe.Listen(np.PipePath)
 	if err != nil {
@@ -50,15 +53,14 @@ func (np *NamedPipe) ListenAndServe() error {
 			continue
 		}
 		np.conn = conn
-		go np.handleConnection()
+		go np.handleConnection("server")
 		return nil
 	}
 }
 
 func (np *NamedPipe) Connect() error {
-	np.Incoming = make(chan string)
-	
-	fmt.Println("-Connect:",np.PipePath)
+
+	fmt.Println("-Connect:", np.PipePath)
 	conn, err := npipe.Dial(np.PipePath)
 	np.conn = conn
 	fmt.Println("-after dial-")
@@ -67,7 +69,7 @@ func (np *NamedPipe) Connect() error {
 		return err
 	}
 	fmt.Println("-launching read handling routine-")
-	go np.handleConnection()
+	go np.handleConnection("client")
 	return nil
 }
 
@@ -88,7 +90,6 @@ func (np *NamedPipe) ReadMessage() string {
 	}
 	return msg
 }
-
 
 func (np *NamedPipe) WriteMessage(message string) {
 	np.conn.Write([]byte(message))

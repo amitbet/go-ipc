@@ -14,8 +14,8 @@ func main() {
 	//for i := 0; i < 3; i++ {
 	fmt.Println("Opening ipc as client")
 	// set the correct pipe path: (constructor function will concat it with stuff)
-	pipeClient = &pipes.NamedPipe{PipePath:pipePath}
-
+	
+	pipeClient = pipes.NewNamedPipe(pipePath)
 	err := pipeClient.Connect()
 	if err != nil {
 		fmt.Println("Client Main, Error: ", err)
@@ -26,7 +26,9 @@ func main() {
 	pipeClient.WriteMessage("hello\n")
 	pipeClient.WriteMessage("hello2\n")
 	fmt.Println("client: reading!")
-	data:=<-pipeClient.Incoming
-	fmt.Println("client got data: ",data)
-	 
+	data := <-pipeClient.Incoming
+	fmt.Println("client got data: ", data)
+	data = <-pipeClient.Incoming
+	fmt.Println("client got data: ", data)
+
 }

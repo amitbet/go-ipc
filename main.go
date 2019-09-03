@@ -5,19 +5,20 @@ import (
 	"ipc/pipes"
 	"os"
 	"os/exec"
+	"time"
 )
 
 var execerPath string
 
 func main() {
 
-	var execerPath = "./client/client.exe"
+	var execerPath = "./client/client"
 
 	// Create named pipe
 	pipeName := "stam"
 	fmt.Println("Opening ipc as server")
-
-	np := pipes.NewNamedPipe(pipeName)
+	ppath:=pipes.GetPipePath(pipeName)
+	np := pipes.NewNamedPipe(ppath)
 	go np.ListenAndServe()
 	fmt.Println("-running client")
 	go func() {
@@ -27,10 +28,12 @@ func main() {
 		//fmt.Println("running command: " + execerPath + " " + namedPipe)
 		cmd.Run()
 	}()
-	fmt.Println("-server: reading!")
+	fmt.Println("server: reading!")
 	str := <-np.Incoming
 	fmt.Println("server, got message1: ", str)
 	str = <-np.Incoming
 	fmt.Println("server, got message2: ", str)
 	np.WriteMessage("yo client!\n")
+	np.WriteMessage("yo client2!\n")
+	time.Sleep(5 * time.Minute)
 }
